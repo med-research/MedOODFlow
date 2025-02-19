@@ -1,0 +1,46 @@
+exp_name: "'@{dataset.name}'_'@{network.name}'_'@{pipeline.name}'_'@{evaluator.name}'_'@{postprocessor.name}'_'@{mark}'/s'@{seed}'/'@{evaluator.ood_scheme}'"
+output_dir: ./results/
+save_output: True
+merge_option: default # disabled if 'save_output' is False choices: [default, pass, merge]
+mark: default # to mark the version of experiment
+seed: 0
+
+dataset:
+  # cached features extracted from classifier, if specified, the pipeline will use
+  # the cached features instead of extracting them from the raw inputs
+  feat_root: ''
+  z_normalize_feat: False
+
+ood_dataset:
+  # cached features extracted from classifier, if specified, the pipeline will use
+  # the cached features instead of extracting them from the raw inputs
+  feat_root: ''
+  z_normalize_feat: False
+
+num_gpus: 1
+num_workers: 8
+num_machines: 1
+machine_rank: 0
+
+network:
+  pretrained: True
+  checkpoint: ["./results/cifar10_nflow_nflow_e100_lr0.0001_default/s0/best_nflow.ckpt",
+               null]
+
+  # load checkpoint for feature extraction network
+  backbone:
+    pretrained: True
+    checkpoint: "./results/cifar10_resnet18_32x32_base_e100_lr0.1_default/s0/best.ckpt"
+    checkpoint_key: none
+
+pipeline:
+  name: test_nflow
+
+evaluator:
+  name: ood
+  ood_scheme: ood
+  ood_splits: [nearood, farood]
+
+recorder:
+  save_scores: True
+  save_csv: True

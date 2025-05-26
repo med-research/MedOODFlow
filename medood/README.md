@@ -189,7 +189,7 @@ If you use the MedOOD benchmark in your research, please cite this paper:
 
 ```bibtex
 @article{XXXXX,
-  title={Enhancing Out-of-Distribution Detection in Medical Imaging with Normalizing Flows},
+  title={Safeguarding AI in Medical Imaging: Post-Hoc Out-of-Distribution Detection with Normalizing Flows},
   author={XXXXX},
   journal={arXiv preprint arXiv:XXXXX},
   year={2025}

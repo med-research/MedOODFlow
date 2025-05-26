@@ -94,7 +94,10 @@ class BaseVisualizer(ABC):
         keep_ratio_threshold = \
             self.plot_config.score_outlier_removal.keep_ratio_threshold
 
-        if method == 'range':
+        if method == 'none':
+            # No outlier removal
+            best_indices = np.ones(len(scores), dtype=bool)
+        elif method == 'range':
             assert len(keep_range) == 2, 'keep_range must have 2 values'
             keep_range = [
                 np.inf if str(x).lower() == 'inf' else
@@ -173,6 +176,29 @@ class BaseVisualizer(ABC):
         if not separate:
             feat_list = np.hstack(feat_list)
         return feat_list
+
+    def load_extra_features(self, n_samples=None):
+        extra_feats_dict = {}
+        extra_feats_paths = self.config.visualizer.get('extra_feats', [])
+        for feat_path in extra_feats_paths:
+            if not feat_path:
+                continue
+            if not os.path.exists(feat_path):
+                print(f"WARNING: Extra feature file '{feat_path}' not found.")
+                continue
+            feature_dict = np.load(feat_path)
+            feats = feature_dict['feat_list']
+            print(f"Loaded '{feat_path}' feature size: {feats.shape}")
+            # Use the filename without extension as the feature name
+            feat_name = os.path.splitext(os.path.basename(feat_path))[0]
+            if n_samples is not None and feats.shape[0] > n_samples:
+                indices = np.random.choice(feats.shape[0],
+                                           n_samples,
+                                           replace=False)
+                feats = feats[indices]
+                print(f'Sampled {n_samples} points from {feat_name}')
+            extra_feats_dict[feat_name] = feats
+        return extra_feats_dict
 
     @staticmethod
     def get_title_and_file_suffix(l2_normalize_feat, z_normalize_feat):

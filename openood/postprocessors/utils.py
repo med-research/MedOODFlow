@@ -1,5 +1,6 @@
 from openood.utils import Config
 
+from .nci_postprocessor import NCIPostprocessor
 from .fdbd_postprocessor import fDBDPostprocessor
 from .ash_postprocessor import ASHPostprocessor
 from .base_postprocessor import BasePostprocessor
@@ -24,6 +25,8 @@ from .mds_postprocessor import MDSPostprocessor
 from .mds_ensemble_postprocessor import MDSEnsemblePostprocessor
 from .mos_postprocessor import MOSPostprocessor
 from .nflow_postprocessor import NormalizingFlowPostprocessor
+from .nflow_typicality_postprocessor import \
+    NormalizingFlowTypicalityPostprocessor
 from .npos_postprocessor import NPOSPostprocessor
 from .odin_postprocessor import ODINPostprocessor
 from .opengan_postprocessor import OpenGanPostprocessor
@@ -48,6 +51,7 @@ from .scale_postprocessor import ScalePostprocessor
 
 def get_postprocessor(config: Config):
     postprocessors = {
+        'nci': NCIPostprocessor,
         'fdbd': fDBDPostprocessor,
         'ash': ASHPostprocessor,
         'cider': CIDERPostprocessor,
@@ -92,6 +96,7 @@ def get_postprocessor(config: Config):
         'relation': RelationPostprocessor,
         't2fnorm': T2FNormPostprocessor,
         'nflow': NormalizingFlowPostprocessor,
+        'nflow_typicality': NormalizingFlowTypicalityPostprocessor,
     }
 
     return postprocessors[config.postprocessor.name](config)

@@ -11,16 +11,18 @@ network:
     latent_size: 1024  # The size of the latent space
     hidden_size: 1024  # The number of the hidden units
     n_flows: 4  # Number of flows
+    hidden_layers: 1  # The number of hidden layers in st_network
     clamp_value: 3.0  # The value used for clamping st_network outputs
     clamp_method: "ATAN"  # The clamp method, choices: [HARD, TANH, SIGMOID, ATAN]
     clamp_t: False  # Whether to clamp the t-network outputs as well as s-network outputs
     l2_normalize: True  # l2-normalize the input of the nflow network
-    arch: "RealNVP" # The architecture of the normalizing flow, choices: [RealNVP, Glow]
+    arch: "RealNVP" # The architecture of the normalizing flow, choices: [RealNVP, Glow, NSF, ResFlow]
 
   # network used for feature extraction and aggregation
   backbone:
     name: feat_concat
     num_gpus: '@{num_gpus}'
+    processing: ['avg_pool_2d']
 
     # feature aggregation network
     feat_agg:

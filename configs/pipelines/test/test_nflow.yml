@@ -4,6 +4,7 @@ save_output: True
 merge_option: default # disabled if 'save_output' is False choices: [default, pass, merge]
 mark: default # to mark the version of experiment
 seed: 0
+nondeterministic_operators: 'Error'
 
 dataset:
   # cached features extracted from classifier, if specified, the pipeline will use

@@ -5,7 +5,7 @@ network:
   pretrained: False
   checkpoint: none           # ignore if pretrained is false
   num_gpus: '@{num_gpus}'
-  n_spatial_dims: 3
+  processing: ['avg_pool_3d']
 
   # feature aggregation network
   feat_agg:

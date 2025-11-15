@@ -39,9 +39,9 @@ class MultiScaleNormalizingFlow(nn.Module):
 
 
 def get_multiscale_normalizing_flow(network_config):
-    latent_size = list(map(int, network_config.latent_size))
-    hidden_size = list(map(int, network_config.hidden_size))
-    n_flows = list(map(int, network_config.n_flows))
+    latent_size = network_config.latent_size
+    hidden_size = network_config.hidden_size
+    n_flows = network_config.n_flows
     nflows = []
     for l_sz, h_sz, n_fs in zip(latent_size, hidden_size, n_flows):
         net_config = Config(network_config)

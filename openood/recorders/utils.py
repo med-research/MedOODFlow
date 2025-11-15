@@ -13,6 +13,7 @@ from .nflow_recorder import NormalizingFlowRecorder
 from .opengan_recorder import OpenGanRecorder
 from .rd4ad_recorder import Rd4adRecorder
 from .palm_recorder import PALMRecorder
+from .vae_recorder import VAERecorder
 
 
 def get_recorder(config: Config):
@@ -29,6 +30,7 @@ def get_recorder(config: Config):
         'ad': ADRecorder,
         'rd4ad': Rd4adRecorder,
         'palm': PALMRecorder,
+        'vae': VAERecorder,
         'nflow': NormalizingFlowRecorder,
         'med3d': Med3DRecorder,
     }

@@ -1,0 +1,37 @@
+network:
+  name: nflow
+  num_classes: '@{dataset.num_classes}'
+  image_size: '@{dataset.image_size}'
+  pretrained: False
+  checkpoint: none           # ignore if pretrained is false
+  num_gpus: '@{num_gpus}'
+
+  # normalizing flow network (RealNVP)
+  nflow:
+    latent_size: 1024  # The size of the latent space
+    hidden_size: 1024  # The number of the hidden units
+    n_flows: 4  # Number of flows
+    num_blocks: 2  # The number of blocks in NSF architecture
+    l2_normalize: True  # l2-normalize the input of the nflow network
+    arch: "NSF" # The architecture of the normalizing flow, choices: [RealNVP, Glow, NSF, ResFlow]
+
+  # network used for feature extraction and aggregation
+  backbone:
+    name: feat_concat
+    num_gpus: '@{num_gpus}'
+    processing: ['avg_pool_3d']
+
+    # feature aggregation network
+    feat_agg:
+      layers: [1, 2, 3, 4, 5]
+
+    # network used for feature extraction
+    encoder:
+      name: resnet3d_18
+      num_classes: '@{dataset.num_classes}'
+      num_channels: '@{dataset.num_channels}'
+      image_size: '@{dataset.image_size}'
+      pretrained: False
+      checkpoint: none
+      checkpoint_key: none
+      num_gpus: '@{num_gpus}'

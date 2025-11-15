@@ -13,7 +13,7 @@ from .info import num_classes_dict
 
 class MDSPostprocessor(BasePostprocessor):
     def __init__(self, config):
-        self.config = config
+        super(MDSPostprocessor, self).__init__(config)
         self.num_classes = num_classes_dict[self.config.dataset.name]
         self.setup_flag = False
 

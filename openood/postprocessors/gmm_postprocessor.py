@@ -15,7 +15,7 @@ from .mds_ensemble_postprocessor import (process_feature_type,
 
 class GMMPostprocessor(BasePostprocessor):
     def __init__(self, config):
-        self.config = config
+        super(GMMPostprocessor, self).__init__(config)
         self.postprocessor_args = config.postprocessor.postprocessor_args
         self.feature_type_list = self.postprocessor_args.feature_type_list
         self.reduce_dim_list = self.postprocessor_args.reduce_dim_list
@@ -118,6 +118,7 @@ def get_GMM_stat(model, train_loader, num_clusters_list, feature_type_list,
         component_weight_list, transform_matrix_list
 
 
+@torch.no_grad()
 def compute_GMM_score(model,
                       data,
                       feature_mean,
@@ -168,6 +169,7 @@ def compute_GMM_score(model,
         return prob
 
 
+@torch.no_grad()
 def compute_single_GMM_score(model,
                              data,
                              feature_mean,

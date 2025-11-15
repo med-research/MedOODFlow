@@ -1,0 +1,34 @@
+network:
+  name: vae
+  num_classes: '@{dataset.num_classes}'
+  image_size: '@{dataset.image_size}'
+  pretrained: False
+  checkpoint: none           # ignore if pretrained is false
+  num_gpus: '@{num_gpus}'
+
+  # variational auto-encoder network
+  vae:
+    input_dim: 1024  # The size of the vae input (base model latent size)
+    hidden_dims: [1024, 512, 256, 128, 64]  # The number of the hidden units
+    latent_dim: 64  # The size of the vae latent space
+    l2_normalize: True  # l2-normalize the input of the vae
+
+  # network used for feature extraction and aggregation
+  backbone:
+    name: feat_concat
+    num_gpus: '@{num_gpus}'
+    processing: ['avg_pool_2d']
+
+    # feature aggregation network
+    feat_agg:
+      layers: [1, 2, 3, 4, 5]
+
+    # network used for feature extraction
+    encoder:
+      name: resnet18_28x28
+      num_classes: '@{dataset.num_classes}'
+      image_size: '@{dataset.image_size}'
+      pretrained: False
+      checkpoint: none
+      checkpoint_key: none
+      num_gpus: '@{num_gpus}'

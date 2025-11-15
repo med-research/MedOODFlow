@@ -13,6 +13,7 @@ from .dropout_postprocessor import DropoutPostProcessor
 from .dsvdd_postprocessor import DSVDDPostprocessor
 from .ebo_postprocessor import EBOPostprocessor
 from .ensemble_postprocessor import EnsemblePostprocessor
+from .gmm_feat_postprocessor import GMMFeatPostprocessor
 from .gmm_postprocessor import GMMPostprocessor
 from .godin_postprocessor import GodinPostprocessor
 from .gradnorm_postprocessor import GradNormPostprocessor
@@ -24,6 +25,7 @@ from .mcd_postprocessor import MCDPostprocessor
 from .mds_postprocessor import MDSPostprocessor
 from .mds_ensemble_postprocessor import MDSEnsemblePostprocessor
 from .mos_postprocessor import MOSPostprocessor
+from .nflow_mds_postprocessor import NormalizingFlowMDSPostprocessor
 from .nflow_postprocessor import NormalizingFlowPostprocessor
 from .nflow_typicality_postprocessor import \
     NormalizingFlowTypicalityPostprocessor
@@ -42,6 +44,8 @@ from .ssd_postprocessor import SSDPostprocessor
 from .she_postprocessor import SHEPostprocessor
 from .temp_scaling_postprocessor import TemperatureScalingPostprocessor
 from .t2fnorm_postprocessor import T2FNormPostprocessor
+from .timing_wrapper import PostprocessorTimingWrapper
+from .vae_postprocessor import VAEPostprocessor
 from .vim_postprocessor import VIMPostprocessor
 from .rts_postprocessor import RTSPostprocessor
 from .gen_postprocessor import GENPostprocessor
@@ -49,7 +53,7 @@ from .relation_postprocessor import RelationPostprocessor
 from .scale_postprocessor import ScalePostprocessor
 
 
-def get_postprocessor(config: Config):
+def get_postprocessor(config: Config, timing_wrapper: bool = False):
     postprocessors = {
         'nci': NCIPostprocessor,
         'fdbd': fDBDPostprocessor,
@@ -63,6 +67,7 @@ def get_postprocessor(config: Config):
         'mds_ensemble': MDSEnsemblePostprocessor,
         'rmds': RMDSPostprocessor,
         'gmm': GMMPostprocessor,
+        'gmm_feat': GMMFeatPostprocessor,
         'patchcore': PatchcorePostprocessor,
         'openmax': OpenMax,
         'react': ReactPostprocessor,
@@ -95,8 +100,12 @@ def get_postprocessor(config: Config):
         'gen': GENPostprocessor,
         'relation': RelationPostprocessor,
         't2fnorm': T2FNormPostprocessor,
+        'vae': VAEPostprocessor,
         'nflow': NormalizingFlowPostprocessor,
+        'nflow_mds': NormalizingFlowMDSPostprocessor,
         'nflow_typicality': NormalizingFlowTypicalityPostprocessor,
     }
 
-    return postprocessors[config.postprocessor.name](config)
+    postprocessor = postprocessors[config.postprocessor.name](config)
+    return PostprocessorTimingWrapper(
+        postprocessor) if timing_wrapper else postprocessor

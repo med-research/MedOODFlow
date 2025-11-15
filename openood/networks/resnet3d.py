@@ -3,70 +3,22 @@ from pathlib import Path
 from typing import Any
 
 import torch
-import torch.nn.functional as F
 from monai.networks.nets import ResNet, ResNetBlock, ResNetBottleneck
 from monai.networks.nets.resnet import (get_inplanes,
                                         get_medicalnet_pretrained_resnet_args,
                                         get_pretrained_resnet_medicalnet)
 
-
-class DeterministicMaxPool3d(torch.nn.Module):
-    """A deterministic implementation of 3D max pooling.
-
-    This is useful for reproducibility of results when it's required to use a
-    3d max pooling layer, which the default PyTorch implementation is non-
-    deterministic. The catch is that this implementation is much slower than
-    the default one!
-    """
-    def __init__(self, kernel_size, stride=None, padding=0):
-        super(DeterministicMaxPool3d, self).__init__()
-        self.kernel_size = kernel_size
-        self.stride = stride if stride is not None else kernel_size
-        self.padding = padding
-
-    def forward(self, x):
-        # Add padding to the input
-        x = F.pad(x, (self.padding, self.padding, self.padding, self.padding,
-                      self.padding, self.padding),
-                  mode='constant',
-                  value=float('-inf'))
-
-        # Unfold the depth, height, and width dimensions
-        x_unfolded = x.unfold(2, self.kernel_size, self.stride) \
-                      .unfold(3, self.kernel_size, self.stride) \
-                      .unfold(4, self.kernel_size, self.stride)
-
-        # Reshape the unfolded tensor to apply max operation
-        unfolded_shape = x_unfolded.size()
-        x_unfolded = x_unfolded.contiguous().view(unfolded_shape[0],
-                                                  unfolded_shape[1],
-                                                  unfolded_shape[2],
-                                                  unfolded_shape[3],
-                                                  unfolded_shape[4], -1)
-
-        # Perform max pooling by taking the max over the last dimension
-        # (which contains the unfolded patches)
-        max_pooled, _ = torch.max(x_unfolded, dim=-1)
-
-        return max_pooled
+from .pool3d import DeterministicPool3d
 
 
 class ResNet3D(ResNet):
-    def __init__(self,
-                 block,
-                 layers,
-                 block_inplanes,
-                 use_deterministic_max_pool=False,
-                 **kwargs):
-        super(ResNet3D, self).__init__(block,
-                                       layers,
-                                       block_inplanes,
-                                       spatial_dims=3,
-                                       **kwargs)
-        self.feature_size = block_inplanes[3] * block.expansion
+    def __init__(self, use_deterministic_max_pool=False, **kwargs):
+        super(ResNet3D, self).__init__(spatial_dims=3, **kwargs)
+        self.feature_size = self.fc.in_features
         self.use_deterministic_max_pool = use_deterministic_max_pool
         if self.use_deterministic_max_pool:
-            self.maxpool = DeterministicMaxPool3d(
+            self.maxpool = DeterministicPool3d(
+                pool_type='max',
                 kernel_size=self.maxpool.kernel_size,
                 stride=self.maxpool.stride,
                 padding=self.maxpool.padding)
@@ -118,14 +70,10 @@ class ResNet3D(ResNet):
 
 def _resnet(
     arch: str,
-    block: type[ResNetBlock | ResNetBottleneck],
-    layers: list[int],
-    block_inplanes: list[int],
     pretrained: bool | str,
-    progress: bool,
     **kwargs: Any,
 ) -> ResNet3D:
-    model = ResNet3D(block, layers, block_inplanes, **kwargs)
+    model = ResNet3D(**kwargs)
     if pretrained:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if isinstance(pretrained, str):
@@ -189,11 +137,11 @@ def ResNet3D_18(num_classes: int,
         pretrained (bool): If True, returns a model pretrained on 23
                            medical datasets
     """
-    return _resnet('resnet18',
-                   ResNetBlock, [2, 2, 2, 2],
-                   get_inplanes(),
-                   pretrained,
-                   progress=True,
+    return _resnet(arch='resnet18',
+                   block=ResNetBlock,
+                   layers=[2, 2, 2, 2],
+                   block_inplanes=get_inplanes(),
+                   pretrained=pretrained,
                    n_input_channels=in_channels,
                    num_classes=num_classes,
                    shortcut_type='A',
@@ -217,11 +165,11 @@ def ResNet3D_50(num_classes: int,
         pretrained (bool): If True, returns a model pretrained on 23
                            medical datasets
     """
-    return _resnet('resnet50',
-                   ResNetBottleneck, [3, 4, 6, 3],
-                   get_inplanes(),
-                   pretrained,
-                   progress=True,
+    return _resnet(arch='resnet50',
+                   block=ResNetBottleneck,
+                   layers=[3, 4, 6, 3],
+                   block_inplanes=get_inplanes(),
+                   pretrained=pretrained,
                    n_input_channels=in_channels,
                    num_classes=num_classes,
                    shortcut_type='B',

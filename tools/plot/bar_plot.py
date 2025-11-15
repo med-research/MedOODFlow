@@ -6,7 +6,8 @@ import os
 from openood.utils.vis_comm import save_fig_and_close
 
 
-def plot_bar_from_csv(file_path, output_dir, ylim, rotate, fixed_bar_width):
+def plot_bar_from_csv(file_path, output_dir, ylim, rotate, fixed_bar_width,
+                      show_avg):
     # Load data
     data = pd.read_csv(file_path)
 
@@ -14,8 +15,8 @@ def plot_bar_from_csv(file_path, output_dir, ylim, rotate, fixed_bar_width):
     if 'Category' in data.columns:
         data['Category'] = data['Category'].ffill()
 
-    # Identify metrics (all columns except Category and Dataset)
-    non_metric_cols = ['Category', 'Dataset']
+    # Identify metrics (all columns except Category and Sub-Category)
+    non_metric_cols = ['Category', 'Sub-Category']
     metrics = [col for col in data.columns if col not in non_metric_cols]
 
     file_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -28,32 +29,35 @@ def plot_bar_from_csv(file_path, output_dir, ylim, rotate, fixed_bar_width):
         for category in categories:
             subset = data[data['Category'] == category]
             _create_bar_plot(subset, metrics, category, file_name, output_dir,
-                             ylim, rotate, fixed_bar_width)
+                             ylim, rotate, fixed_bar_width, show_avg)
     else:
         # If no category column, plot everything in one figure
         _create_bar_plot(data, metrics, 'Results', file_name, output_dir, ylim,
-                         rotate, fixed_bar_width)
+                         rotate, fixed_bar_width, show_avg)
 
 
 def _create_bar_plot(data, metrics, title, file_name, output_dir, ylim, rotate,
-                     fixed_bar_width):
-    datasets = data['Dataset'].values
-    num_datasets = len(datasets)
+                     fixed_bar_width, show_avg):
+    sub_categories = data['Sub-Category'].values
+    num_sub_categories = len(sub_categories)
     num_metrics = len(metrics)
 
     # Fixed parameters
     margin_inches = 1.0  # Left/right margins in inches
-    legend_space_inches = 3  # Increased space for legend + avg labels
-    left_padding_inches = 0.125  # Add padding before leftmost group
+    legend_space_inches = (-3, 3)[show_avg]  # space for legend + avg labels
+    left_padding_inches = fixed_bar_width * 0.85  # Pad before leftmost group
+
+    # Calculate number of valid bars for each sub-category
+    valid_bars_per_group = data[metrics].notna().sum(axis=1).values
 
     # Calculate actual width needed for the bars
-    total_bars = num_datasets * num_metrics
+    total_bars = valid_bars_per_group.sum()
     bars_width_inches = total_bars * fixed_bar_width
 
     # Add space between groups - each gap is the same width as a bar
-    # We need (num_datasets - 1) gaps between dataset groups
-    gaps_width_inches = (num_datasets - 1) * fixed_bar_width \
-        if num_datasets > 1 else 0
+    # We need (num_sub_categories - 1) gaps between sub-category groups
+    gaps_width_inches = (num_sub_categories - 1) * fixed_bar_width \
+        if num_sub_categories > 1 else 0
 
     # Total width needed for all data (bars + gaps + left padding)
     total_data_width_inches = bars_width_inches + \
@@ -79,28 +83,32 @@ def _create_bar_plot(data, metrics, title, file_name, output_dir, ylim, rotate,
 
     # Bar width in data units
     bar_width_data = 1.0
-    group_width_data = num_metrics * bar_width_data
 
     # Calculate left padding in data units
     padding_data_units = (left_padding_inches / fixed_bar_width)
 
-    # Position groups with spacing equal to one bar width, and add left padding
-    group_positions = padding_data_units + \
-        np.arange(num_datasets) * (group_width_data + bar_width_data) + \
-        left_padding_inches
+    # Calculate group positions dynamically
+    group_widths_data = valid_bars_per_group * bar_width_data
+    group_positions = np.zeros(num_sub_categories)
+    group_centers = np.zeros(num_sub_categories)
+    current_pos = padding_data_units
+    for i in range(num_sub_categories):
+        group_positions[i] = current_pos
+        group_centers[i] = current_pos + group_widths_data[i] / 2
+        current_pos += group_widths_data[i] + bar_width_data + \
+            left_padding_inches  # Add gap
 
     # Find maximum height for padding calculation
-    max_value = 0
+    max_value = data[metrics].max().max() if not data[metrics].empty else 0
 
     # Store average values for each metric
     avg_values = {}
 
     for metric in metrics:
-        values = data[metric].values
-        current_max = np.max(values) if len(values) > 0 else 0
-        max_value = max(max_value, current_max)
-        # Calculate and store average for this metric
-        avg_values[metric] = np.mean(values) if len(values) > 0 else 0
+        # Calculate and store average for this metric, ignoring NaNs
+        if show_avg:
+            avg_values[metric] = data[metric].mean() \
+                if data[metric].notna().any() else 0
 
     # Get color cycle from matplotlib
     prop_cycle = plt.rcParams['axes.prop_cycle']
@@ -114,80 +122,98 @@ def _create_bar_plot(data, metrics, title, file_name, output_dir, ylim, rotate,
     display_max = ylim * 1.15
 
     for i, metric in enumerate(metrics):
-        values = data[metric].values
         metric_color = colors[i % len(colors)]
+        # Plot bars for each sub-category for the current metric if not NaN
+        for j, sub_cat in enumerate(sub_categories):
+            value = data.iloc[j][metric]
+            if pd.notna(value):
+                # Find how many valid bars are before this one in the group
+                valid_metrics_before = data.iloc[j][metrics[:i]].notna().sum()
+                bar_pos = group_positions[j] + \
+                    valid_metrics_before * bar_width_data - \
+                    padding_data_units / 2
+                bar = ax.bar(bar_pos,
+                             value,
+                             bar_width_data,
+                             alpha=0.6,
+                             color=metric_color,
+                             align='edge')
 
-        # Position bars within groups
-        bar_positions = group_positions + i * bar_width_data
+                # Add value labels on top of each bar
+                height = bar[0].get_height()
+                value_str = f'{value:.0f}' \
+                    if np.abs(value - round(value)) < 0.01 else f'{value:.1f}'
+                if value_str.endswith('.0'):
+                    value_str = value_str[:-2]
+                ax.text(bar[0].get_x() + bar[0].get_width() / 2.,
+                        height + 0.5,
+                        value_str,
+                        ha='center',
+                        va='bottom',
+                        rotation=rotate,
+                        fontsize=8,
+                        fontweight='bold')
 
-        bars = ax.bar(bar_positions,
-                      values,
-                      bar_width_data,
-                      label=metric,
-                      alpha=0.6,
-                      color=metric_color)
+    # Create a legend for metrics
+    legend_handles = [
+        plt.Rectangle((0, 0), 1, 1, color=colors[i % len(colors)], alpha=0.6)
+        for i in range(num_metrics)
+    ]
+    # Replace the legend positioning code with this cleaner solution
+    # Calculate the right edge of the plot in figure coordinates
+    fig_right_edge = left_margin_ratio + axes_width
+    legend_x = fig_right_edge + 0.05  # Fixed 10% of figure width as padding
+    # Position the legend using figure coordinates instead of axes coordinates
+    ax.legend(handles=legend_handles,
+              labels=metrics,
+              loc='center left',
+              bbox_to_anchor=(legend_x, 0.6),
+              bbox_transform=fig.transFigure)
 
-        # Add value labels on top of each bar
-        for bar_idx, bar in enumerate(bars):
-            height = bar.get_height()
-            value = values[bar_idx]
-            value_str = f'{value:.0f}' \
-                if np.abs(value - round(value)) < 0.01 else f'{value:.1f}'
-            if value_str.endswith('.0'):
-                value_str = value_str[:-2]
-            ax.text(bar.get_x() + bar.get_width() / 2.,
-                    height + 0.5,
-                    value_str,
-                    ha='center',
-                    va='bottom',
-                    rotation=rotate,
-                    fontsize=8,
-                    fontweight='bold')
+    if show_avg:
+        # Draw average lines and labels
+        total_data_units = current_pos - bar_width_data \
+            if num_sub_categories > 0 else 0
+        for i, metric in enumerate(metrics):
+            if metric in avg_values:
+                avg = avg_values[metric]
+                metric_color = colors[i % len(colors)]
+                avg_str = f'{avg:.2f}'
+                if avg_str.endswith('.00'):
+                    avg_str = avg_str[:-3]
 
-        # Add average line for this metric
-        avg = avg_values[metric]
-        avg_str = f'{avg:.2f}'
-        if avg_str.endswith('.00'):
-            avg_str = avg_str[:-3]
+                # Draw horizontal dashed line
+                ax.hlines(avg,
+                          0,
+                          total_data_units,
+                          colors=metric_color,
+                          linestyles='dashed',
+                          alpha=0.4,
+                          linewidth=1.5)
 
-        # Draw horizontal dashed line with matching color
-        x_min = 0
-        total_data_units = group_positions[-1] + group_width_data + \
-            bar_width_data / 2 if num_datasets > 0 else 0
-        ax.hlines(avg,
-                  x_min,
-                  total_data_units,
-                  colors=metric_color,
-                  linestyles='dashed',
-                  alpha=0.4,
-                  linewidth=1.5)
+                # Calculate vertical offset for the label to avoid collisions
+                vertical_offset = 0
+                for prev_i in range(i):
+                    if metrics[prev_i] in avg_values:
+                        prev_avg = avg_values[metrics[prev_i]]
+                        if abs(avg - prev_avg) < (display_max * 0.03):
+                            vertical_offset = (i % 3 - 1) * \
+                                              (display_max * 0.04)
 
-        # Calculate vertical offset for the label to avoid collisions
-        # Each metric gets a different offset position
-        vertical_offset = 0
-        if i > 0:
-            # Check if this avg is close to any previous avg
-            for prev_i in range(i):
-                prev_avg = avg_values[metrics[prev_i]]
-                if abs(avg - prev_avg) < (display_max *
-                                          0.03):  # Within 3% of y-axis range
-                    vertical_offset = (i % 3 - 1) * (
-                        display_max * 0.04)  # Alternate up/down/center
-
-        # Add average value label on the right side with offset
-        ax.text(total_data_units + left_padding_inches,
-                avg + vertical_offset,
-                f'Avg: {avg_str}',
-                va='center',
-                ha='left',
-                color=metric_color,
-                fontsize=8,
-                fontweight='bold')
+                # Add average value label on the right side
+                ax.text(total_data_units + padding_data_units / 2,
+                        avg + vertical_offset,
+                        avg_str,
+                        va='center',
+                        ha='left',
+                        color=metric_color,
+                        fontsize=8,
+                        fontweight='bold')
 
     # Set x-ticks at group centers
     ax.set_title(title, fontsize=14, fontweight='bold')
-    ax.set_xticks(group_positions + group_width_data / 2)
-    ax.set_xticklabels(datasets,
+    ax.set_xticks(group_centers)
+    ax.set_xticklabels(sub_categories,
                        rotation=rotate,
                        ha='right' if rotate == 90 else 'center',
                        fontsize=10)
@@ -195,17 +221,16 @@ def _create_bar_plot(data, metrics, title, file_name, output_dir, ylim, rotate,
 
     # Set x limits to ensure all bars are visible with padding
     x_min = 0  # Start from 0 to include the left padding
-    total_data_units = group_positions[-1] + group_width_data \
-        if num_datasets > 0 else 0
-    ax.set_xlim(x_min, total_data_units + left_padding_inches)
+    total_data_units = current_pos - bar_width_data \
+        if num_sub_categories > 0 else 0
+    ax.set_xlim(x_min, total_data_units)
 
     # Add alternating background for better readability
-    half_gap = bar_width_data / 2
-    for i in range(len(datasets)):
+    for i in range(len(sub_categories)):
         if i % 2 == 1:
-            ax.axvspan(group_positions[i] - bar_width_data / 2 - half_gap,
-                       (group_positions[i] + group_width_data -
-                        bar_width_data / 2 + half_gap),
+            ax.axvspan(group_positions[i] - bar_width_data,
+                       group_positions[i] + group_widths_data[i] +
+                       left_padding_inches,
                        alpha=0.1,
                        color='gray')
 
@@ -217,14 +242,6 @@ def _create_bar_plot(data, metrics, title, file_name, output_dir, ylim, rotate,
     ax.set_yticks(yticks)
 
     ax.grid(axis='y', linestyle='--', alpha=0.6)
-    # Replace the legend positioning code with this cleaner solution
-    # Calculate the right edge of the plot in figure coordinates
-    fig_right_edge = left_margin_ratio + axes_width
-    legend_x = fig_right_edge + 0.1  # Fixed 10% of figure width as padding
-    # Position the legend using figure coordinates instead of axes coordinates
-    ax.legend(loc='center left',
-              bbox_to_anchor=(legend_x, 0.6),
-              bbox_transform=fig.transFigure)
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
 
@@ -253,9 +270,12 @@ if __name__ == '__main__':
                         type=float,
                         default=0.15,
                         help='Fixed width of each bar. Default: 0.15')
+    parser.add_argument('--show-avg',
+                        action='store_true',
+                        help='Show average lines and labels.')
 
     args = parser.parse_args()
 
     # Call the plotting function with the provided arguments
     plot_bar_from_csv(args.file_path, args.output_dir, args.ylim, args.rotate,
-                      args.fixed_bar_width)
+                      args.fixed_bar_width, args.show_avg)

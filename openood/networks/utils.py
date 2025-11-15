@@ -12,8 +12,10 @@ from .bit import KNOWN_MODELS
 from .conf_branch_net import ConfBranchNet
 from .csi_net import get_csi_linear_layers, CSINet
 from .cider_net import CIDERNet
+from .densenet3d import DenseNet3D_121
 from .identity import IdentityNetwork
 from .resnet3d import ResNet3D_18
+from .swin_vit3d import SwinViT3D
 from .t2fnorm_net import T2FNormNet
 from .de_resnet18_256x256 import AttnBasicBlock, BN_layer, De_ResNet18_256x256
 from .densenet import DenseNet3
@@ -37,6 +39,7 @@ from .resnet50 import ResNet50
 from .rot_net import RotNet
 from .udg_net import UDGNet
 from .vit_b_16 import ViT_B_16
+from .vit3d import ViT3D
 from .wrn import WideResNet
 from .rts_net import RTSNet
 from .palm_net import PALMNet
@@ -49,6 +52,26 @@ def get_network(network_config):
 
     if network_config.name == 'identity':
         net = IdentityNetwork(num_classes=num_classes)
+
+    elif network_config.name == 'swin_vit3d':
+        net = SwinViT3D(num_classes=num_classes,
+                        in_channels=network_config.num_channels,
+                        embed_dim=network_config.embed_dim or 24,
+                        use_checkpoint=network_config.use_checkpoint or False)
+
+    elif network_config.name == 'vit3d':
+        net = ViT3D(num_classes=num_classes,
+                    in_channels=network_config.num_channels,
+                    img_size=network_config.image_size,
+                    hidden_size=network_config.hidden_size or 768,
+                    mlp_dim=network_config.mlp_dim or 3072,
+                    num_heads=network_config.num_heads or 12,
+                    num_layers=network_config.num_layers or 12,
+                    qkv_bias=network_config.qkv_bias or False)
+
+    elif network_config.name == 'densenet3d_121':
+        net = DenseNet3D_121(num_classes=num_classes,
+                             in_channels=network_config.num_channels)
 
     elif network_config.name == 'resnet3d_18':
         net = ResNet3D_18(num_classes=num_classes,
@@ -381,6 +404,11 @@ def get_network(network_config):
         bn = BN_layer(AttnBasicBlock, 2)
         decoder = De_ResNet18_256x256()
         net = {'encoder': encoder, 'bn': bn, 'decoder': decoder}
+    elif network_config.name == 'vae':
+        from .vae import get_vae
+        backbone = get_network(network_config.backbone)
+        vae_net = get_vae(network_config.vae)
+        net = {'vae': vae_net, 'backbone': backbone}
     elif network_config.name == 'nflow':
         from .nflow import get_normalizing_flow
         backbone = get_network(network_config.backbone)
@@ -394,9 +422,9 @@ def get_network(network_config):
     elif network_config.name == 'feat_concat':
         from .feat_concat import FeatureConcatNetwork
         encoder = get_network(network_config.encoder)
-        n_spatial_dims = network_config.n_spatial_dims or 2
-        net = FeatureConcatNetwork(encoder, network_config.feat_agg.layers,
-                                   n_spatial_dims)
+        net = FeatureConcatNetwork(encoder,
+                                   network_config.feat_agg.layers,
+                                   processing=network_config.processing)
     elif network_config.name == 'nflow_featagg':
         from .nflow import get_normalizing_flow
         from .feat_agg import get_feature_aggregator
@@ -492,6 +520,7 @@ def get_network(network_config):
 def warn_missing_keys(net, ckpt):
     missing_in_net = set(ckpt.keys()) - set(net.state_dict().keys())
     missing_in_ckpt = set(net.state_dict().keys()) - set(ckpt.keys())
-    if missing_in_net or missing_in_ckpt:
+    if missing_in_net:
         print('WARNING: Missing keys in net:', missing_in_net)
+    if missing_in_ckpt:
         print('WARNING: Missing keys in checkpoint:', missing_in_ckpt)

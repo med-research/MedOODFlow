@@ -1,0 +1,14 @@
+exp_name: "'@{dataset.name}'_'@{network.name}'_'@{pipeline.name}'\
+_'@{evaluator.name}'_'@{postprocessor.name}'\
+_'@{postprocessor.postprocessor_args.num_clusters_list}'\
+_'@{postprocessor.postprocessor_args.alpha_list}'\
+_'@{postprocessor.postprocessor_args.reduce_dim_list}'\
+_'@{mark}'"
+
+postprocessor:
+  name: gmm_feat
+  postprocessor_args:
+    num_clusters_list: [50]  # Single layer since features are already extracted
+    feature_type_list: [flat]  # Features are flattened
+    alpha_list: [1]  # Single weight
+    reduce_dim_list: [pca_50]  # Optional dimensionality reduction

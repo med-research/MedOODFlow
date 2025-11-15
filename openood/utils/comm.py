@@ -5,6 +5,7 @@ This is useful when doing distributed training.
 """
 
 import functools
+import random
 
 import numpy as np
 import torch
@@ -197,3 +198,28 @@ def reduce_dict(input_dict, average=True):
             values /= world_size
         reduced_dict = {k: v for k, v in zip(names, values)}
     return reduced_dict
+
+
+def set_deterministic(seed: int, nondeterministic_operators: str = 'Error'):
+    """Set random seed for reproducibility.
+
+    Args:
+        seed (int): random seed.
+        nondeterministic_operators (str): the behavior when
+            nondeterministic operators are in the model.
+            Options are 'Error', 'Warn', 'Pass'.
+    """
+    if not nondeterministic_operators:
+        nondeterministic_operators = 'Error'
+    deterministic_algorithms = nondeterministic_operators != 'Pass'
+    try:
+        from monai.utils import set_determinism
+        set_determinism(seed=seed,
+                        use_deterministic_algorithms=deterministic_algorithms)
+    except ImportError:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.use_deterministic_algorithms(deterministic_algorithms)
+    if nondeterministic_operators == 'Warn':
+        torch.use_deterministic_algorithms(True, warn_only=True)

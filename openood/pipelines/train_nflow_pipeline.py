@@ -1,6 +1,3 @@
-import random
-
-import numpy as np
 import torch
 
 from openood.datasets import get_feature_nflow_dataloader
@@ -9,7 +6,7 @@ from openood.networks import get_network
 from openood.postprocessors import get_postprocessor
 from openood.recorders import get_recorder
 from openood.trainers import get_trainer
-from openood.utils import setup_logger
+from openood.utils import setup_logger, comm
 
 
 class TrainNormalizingFlowPipeline:
@@ -20,16 +17,9 @@ class TrainNormalizingFlowPipeline:
         # generate output directory and save the full config file
         setup_logger(self.config)
 
-        # set random seed
-        try:
-            from monai.utils import set_determinism
-            set_determinism(seed=self.config.seed,
-                            use_deterministic_algorithms=True)
-        except ImportError:
-            torch.manual_seed(self.config.seed)
-            np.random.seed(self.config.seed)
-            random.seed(self.config.seed)
-            torch.use_deterministic_algorithms(True)
+        # set deterministic behavior
+        comm.set_deterministic(self.config.seed,
+                               self.config.nondeterministic_operators)
 
         # get dataloader
         dataloaders = get_feature_nflow_dataloader(self.config.dataset)

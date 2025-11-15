@@ -32,6 +32,8 @@ def get_dataloader(config: Config):
         preprocessor = get_preprocessor(config, split)
         # weak augmentation for data_aux
         if split_config.dataset_class == 'Med3DImglistDataset':
+            # from openood.preprocessors.med3d_preprocessor import \
+            #     Med3DTestPreprocessor
             # data_aux_preprocessor = Med3DTestPreprocessor(config)
             data_aux_preprocessor = None  # for computational efficiency
         else:

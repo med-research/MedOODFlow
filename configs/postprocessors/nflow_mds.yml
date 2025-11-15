@@ -1,0 +1,4 @@
+postprocessor:
+    name: nflow_mds
+    APS_mode: False
+#    per_class: avg

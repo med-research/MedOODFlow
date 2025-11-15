@@ -139,6 +139,12 @@ def process_feature_type(feature_temp, feature_type):
         feature_temp = get_torch_feature_stat(feature_temp)
     elif feature_type == 'mean':
         feature_temp = get_torch_feature_stat(feature_temp, only_mean=True)
+    elif feature_type == 'avg_pool_3d':
+        feature_temp = nn.functional.adaptive_avg_pool3d(
+            feature_temp, output_size=1).view([feature_temp.size(0), -1])
+    elif feature_type == 'avg_pool_2d':
+        feature_temp = nn.functional.adaptive_avg_pool2d(
+            feature_temp, output_size=1).view([feature_temp.size(0), -1])
     else:
         raise ValueError('Unknown feature type')
     return feature_temp

@@ -1,6 +1,7 @@
 import csv
 import os
 import shutil
+import time
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -25,6 +26,9 @@ class OODEvaluator(BaseEvaluator):
         self.id_pred = None
         self.id_conf = None
         self.id_gt = None
+        self.hyperparam_search_time = 0.0
+        self.hyperparam_search_samples = 0
+        self.hyperparam_combinations = 0
 
     def eval_ood(self,
                  net: nn.Module,
@@ -269,6 +273,7 @@ class OODEvaluator(BaseEvaluator):
         ood_data_loader,
         postprocessor: BasePostprocessor,
     ):
+        start = time.time()
         print('Starting automatic parameter search...')
         aps_dict = {}
         max_auroc = 0
@@ -282,6 +287,17 @@ class OODEvaluator(BaseEvaluator):
             hyperparam_list.append(postprocessor.args_dict[name])
         hyperparam_combination = self.recursive_generator(
             hyperparam_list, count)
+
+        # Count total samples once
+        id_samples = sum(
+            len(batch['data']) if isinstance(batch, dict) else batch[0].size(0)
+            for batch in id_data_loader)
+        ood_samples = sum(
+            len(batch['data']) if isinstance(batch, dict) else batch[0].size(0)
+            for batch in ood_data_loader)
+        self.hyperparam_search_samples = id_samples + ood_samples
+        self.hyperparam_combinations = len(hyperparam_combination)
+
         for hyperparam in hyperparam_combination:
             postprocessor.set_hyperparam(hyperparam)
             id_pred, id_conf, id_gt = postprocessor.inference(
@@ -302,6 +318,7 @@ class OODEvaluator(BaseEvaluator):
         for key in aps_dict.keys():
             if aps_dict[key] == max_auroc:
                 postprocessor.set_hyperparam(hyperparam_combination[key])
+        self.hyperparam_search_time = time.time() - start
         print('Final hyperparam: {}'.format(postprocessor.get_hyperparam()))
         return max_auroc
 
@@ -385,3 +402,11 @@ class OODEvaluator(BaseEvaluator):
         for row in rows:
             image_name = os.path.basename(row['image_name'])
             shutil.copy2(row['image_path'], os.path.join(dst_dir, image_name))
+
+    def get_timing_stats(self):
+        return {
+            'Hyperparameter Search Time (s)':
+            round(self.hyperparam_search_time, 3),
+            'Hyperparameter Search Samples': self.hyperparam_search_samples,
+            'Hyperparameter Combinations': self.hyperparam_combinations
+        }

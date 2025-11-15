@@ -26,7 +26,7 @@ class TestOODPipeline:
         evaluator = get_evaluator(self.config)
 
         # init ood postprocessor
-        postprocessor = get_postprocessor(self.config)
+        postprocessor = get_postprocessor(self.config, timing_wrapper=True)
         # setup for distance-based methods
         postprocessor.setup(net, id_loader_dict, ood_loader_dict)
         print('\n', flush=True)
@@ -38,12 +38,12 @@ class TestOODPipeline:
             acc_metrics = evaluator.eval_acc(
                 net,
                 id_loader_dict['test'],
-                postprocessor,
+                postprocessor.postprocessor,  # no timing wrapper
                 fsood=True,
                 csid_data_loaders=ood_loader_dict['csid'])
         else:
             acc_metrics = evaluator.eval_acc(net, id_loader_dict['test'],
-                                             postprocessor)
+                                             postprocessor.postprocessor)
         print('\nAccuracy {:.2f}%'.format(100 * acc_metrics['acc']),
               flush=True)
         print(u'\u2500' * 70, flush=True)
@@ -59,5 +59,17 @@ class TestOODPipeline:
         else:
             evaluator.eval_ood(net, id_loader_dict, ood_loader_dict,
                                postprocessor)
-        print('Time used for eval_ood: {:.0f}s'.format(time.time() - timer))
+        eval_ood_time = time.time() - timer
+        timing_stats = postprocessor.get_timing_stats()
+        print('\nPostprocessor Timing Stats:', flush=True)
+        for k, v in timing_stats.items():
+            print(f'  {k}: {v}', flush=True)
+        if hasattr(evaluator, 'get_timing_stats'):
+            timing_stats = evaluator.get_timing_stats()
+            timing_stats['eval_ood Time (s)'] = round(eval_ood_time, 3)
+            print('\nEvaluator Timing Stats:', flush=True)
+            for k, v in timing_stats.items():
+                print(f'  {k}: {v}', flush=True)
+        else:
+            print('Time used for eval_ood: {:.0f}s'.format(eval_ood_time))
         print('Completed!', flush=True)

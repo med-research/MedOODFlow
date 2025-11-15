@@ -12,8 +12,7 @@ python main.py \
     configs/pipelines/test/feat_extract_nflow.yml \
     configs/preprocessors/med3d_preprocessor.yml \
     --pipeline.extract_nflow False \
-    --network.pretrained True \
-    --network.checkpoint "./results/brats20_t1_nflow_multiscale_nflow_e100_lr0.0001_${MARK1}_${MARK2}/s${SEED}/best_nflow.ckpt" None \
+    --network.pretrained False \
     --network.backbone.pretrained False \
     --network.backbone.encoder.pretrained True \
     --network.backbone.encoder.checkpoint "./results/brats20_t1_resnet3d_18_med3d_e100_lr0.0001_default/s${SEED}/best.ckpt" \

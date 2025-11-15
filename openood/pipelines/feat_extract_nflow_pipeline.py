@@ -1,6 +1,5 @@
-import random
+import time
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -8,7 +7,7 @@ from openood.datasets import (get_dataloader, get_ood_dataloader,
                               get_feature_nflow_test_dataloaders)
 from openood.evaluators import get_evaluator
 from openood.networks import get_network
-from openood.utils import setup_logger
+from openood.utils import setup_logger, comm
 
 
 class FullNormalizingFlowNet(nn.Module):
@@ -41,6 +40,7 @@ class FeatExtractNormalizingFlowPipeline:
 
         # start extracting features
         print('\nStart Feature Extraction...', flush=True)
+        timer = time.time()
         print('\t ID training data...')
         evaluator.extract(net, id_loader_dict['train'], 'id_train')
 
@@ -49,7 +49,8 @@ class FeatExtractNormalizingFlowPipeline:
 
         print('\t OOD val data...')
         evaluator.extract(net, ood_loader_dict['val'], 'ood_val')
-        print('\nComplete Feature Extraction!')
+        print('\nFeature Extraction Time (s): {:.3f}'.format(time.time() - timer))
+        print('Complete Feature Extraction!')
 
     def extract_backbone_features_test(self, net, evaluator, id_loader_dict,
                                        ood_loader_dict):
@@ -93,16 +94,9 @@ class FeatExtractNormalizingFlowPipeline:
         # generate output directory and save the full config file
         setup_logger(self.config)
 
-        # set random seed
-        try:
-            from monai.utils import set_determinism
-            set_determinism(seed=self.config.seed,
-                            use_deterministic_algorithms=True)
-        except ImportError:
-            torch.manual_seed(self.config.seed)
-            np.random.seed(self.config.seed)
-            random.seed(self.config.seed)
-            torch.use_deterministic_algorithms(True)
+        # set deterministic behavior
+        comm.set_deterministic(self.config.seed,
+                               self.config.nondeterministic_operators)
 
         # get dataloader
         id_loader_dict = get_dataloader(self.config)

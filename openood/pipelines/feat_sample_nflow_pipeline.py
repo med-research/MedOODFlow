@@ -1,11 +1,10 @@
 import os
-import random
 
 import numpy as np
 import torch
 
 from openood.networks import get_network
-from openood.utils import setup_logger
+from openood.utils import setup_logger, comm
 
 
 class FeatSampleNormalizingFlowPipeline:
@@ -41,16 +40,9 @@ class FeatSampleNormalizingFlowPipeline:
         # generate output directory and save the full config file
         setup_logger(self.config)
 
-        # set random seed
-        try:
-            from monai.utils import set_determinism
-            set_determinism(seed=self.config.seed,
-                            use_deterministic_algorithms=True)
-        except ImportError:
-            torch.manual_seed(self.config.seed)
-            np.random.seed(self.config.seed)
-            random.seed(self.config.seed)
-            torch.use_deterministic_algorithms(True)
+        # set deterministic behavior
+        comm.set_deterministic(self.config.seed,
+                               self.config.nondeterministic_operators)
 
         # init network
         net = get_network(self.config.network)

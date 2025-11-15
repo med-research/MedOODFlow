@@ -3,6 +3,7 @@ from functools import partial
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from monai.losses import FocalLoss
 
 from .base_trainer import BaseTrainer
 
@@ -35,6 +36,17 @@ class Med3DTrainer(BaseTrainer):
             return optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
                                                         T_max=total_steps,
                                                         eta_min=1e-6)
+        elif scheduler_config.name.lower() == 'warmup+cosine':
+            warmup_steps = scheduler_config.warmup_epochs * len(
+                self.train_loader)
+            warmup_scheduler = optim.lr_scheduler.LambdaLR(
+                self.optimizer, lr_lambda=lambda s: (s + 1) / warmup_steps)
+            cosine_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=total_steps - warmup_steps, eta_min=1e-6)
+            return optim.lr_scheduler.SequentialLR(
+                self.optimizer,
+                schedulers=[warmup_scheduler, cosine_scheduler],
+                milestones=[warmup_steps])
         elif scheduler_config.name.lower() == 'poly':
             return optim.lr_scheduler.PolynomialLR(
                 self.optimizer,
@@ -53,8 +65,17 @@ class Med3DTrainer(BaseTrainer):
         loss_config = self.config.loss
         if loss_config is None:
             return super().get_loss_fn()
+        elif loss_config.name.lower() == 'cross_entropy':
+            return F.cross_entropy
         elif loss_config.name.lower() == 'weighted_ce':
             weight = torch.Tensor(loss_config.weight).cuda()
             return partial(F.cross_entropy, weight=weight)
+        elif loss_config.name.lower() == 'focal':
+            gamma = loss_config.gamma or 2.0
+            weight = torch.Tensor(loss_config.weight).cuda()
+            return FocalLoss(gamma=gamma,
+                             weight=weight,
+                             use_softmax=True,
+                             to_onehot_y=True)
         else:
             raise ValueError('Loss function not supported')

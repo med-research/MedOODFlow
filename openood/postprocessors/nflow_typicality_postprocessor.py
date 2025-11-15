@@ -24,7 +24,7 @@ class NormalizingFlowTypicalityPostprocessor(BasePostprocessor):
             log_prob = net['nflow'].log_prob(feats)
             grad = torch.autograd.grad(log_prob.sum(), feats)[0]
             grad_norm = grad.view(data.size(0), -1).norm(dim=1)
-            conf = -grad_norm.detach().cpu()
+            conf = (-grad_norm).detach().cpu()
         # feature input
         elif data.shape[-1] == 1 and data.shape[-2] == 1:
             with torch.no_grad():
@@ -36,7 +36,7 @@ class NormalizingFlowTypicalityPostprocessor(BasePostprocessor):
             log_prob = net['nflow'].log_prob(feats)
             grad = torch.autograd.grad(log_prob.sum(), feats)[0]
             grad_norm = grad.norm(dim=1)
-            conf = -grad_norm.detach().cpu()
+            conf = (-grad_norm).detach().cpu()
             pred = torch.ones_like(conf)  # dummy predictions
         else:
             raise ValueError('Unsupported input type!')

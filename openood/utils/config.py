@@ -240,6 +240,34 @@ class Config(dict):
                     value_str.append(next_arg_or_value)
                     index += 1
 
+                # Convert list items based on the type of items in the config
+                if isinstance(self[key], list) and len(self[key]) > 0:
+                    # Find the type of the first non-None item in the config
+                    item_type = None
+                    for item in self[key]:
+                        if item is not None:
+                            item_type = type(item)
+                            break
+
+                    # Convert each item in value_str to the detected type
+                    if item_type is not None:
+                        converted_list = []
+                        for item in value_str:
+                            if item is None:
+                                converted_list.append(None)
+                            elif item_type is bool:
+                                converted_list.append({
+                                    'true': True,
+                                    'True': True,
+                                    '1': True,
+                                    'false': False,
+                                    'False': False,
+                                    '0': False,
+                                }[item])
+                            else:
+                                converted_list.append(item_type(item))
+                        value_str = converted_list
+
             if value_type is bool:
                 self[key] = {
                     'true': True,

@@ -1,0 +1,26 @@
+network:
+  name: vit3d
+  num_classes: '@{dataset.num_classes}'
+  num_channels: '@{dataset.num_channels}'
+  image_size: '@{dataset.image_size}'
+  hidden_size: 384
+  mlp_dim: 1536
+  num_heads: 12
+  num_layers: 12
+  qkv_bias: False
+# ----------------------
+#  hidden_size: 192
+#  mlp_dim: 768
+#  num_heads: 6
+#  num_layers: 8
+#  qkv_bias: False
+# ----------------------
+#  hidden_size: 768
+#  mlp_dim: 3072
+#  num_heads: 12
+#  num_layers: 12
+#  qkv_bias: True
+# ----------------------
+  pretrained: False  # set 'True' to load pretrained model
+  checkpoint: none   # ignore if pretrained is false
+  num_gpus: '@{num_gpus}'

@@ -1,3 +1,4 @@
+import time
 from typing import Any
 from tqdm import tqdm
 
@@ -11,6 +12,8 @@ import openood.utils.comm as comm
 class BasePostprocessor:
     def __init__(self, config):
         self.config = config
+        self.postprocess_time = 0.0
+        self.num_postprocess_samples = 0
 
     def setup(self, net: nn.Module, id_loader_dict, ood_loader_dict):
         pass
@@ -31,7 +34,10 @@ class BasePostprocessor:
                           disable=not progress or not comm.is_main_process()):
             data = batch['data'].cuda()
             label = batch['label'].cuda()
+            start = time.time()
             pred, conf = self.postprocess(net, data)
+            self.postprocess_time += time.time() - start
+            self.num_postprocess_samples += data.size(0)
 
             pred_list.append(pred.cpu())
             conf_list.append(conf.cpu())

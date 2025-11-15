@@ -29,6 +29,7 @@ from .opengan_trainer import OpenGanTrainer
 from .rd4ad_trainer import Rd4adTrainer
 from .sae_trainer import SAETrainer
 from .udg_trainer import UDGTrainer
+from .vae_trainer import VAETrainer
 from .vos_trainer import VOSTrainer
 from .rts_trainer import RTSTrainer
 from .rotpred_trainer import RotPredTrainer
@@ -76,6 +77,7 @@ def get_trainer(net, train_loader: DataLoader, val_loader: DataLoader,
             't2fnorm': T2FNormTrainer,
             'reweightood': ReweightOODTrainer,
             'ascood': ASCOODTrainer,
+            'vae': VAETrainer,
             'nflow': NormalizingFlowTrainer,
             'nflow_typicality': NormalizingFlowTypicalityTrainer,
             'med3d': Med3DTrainer,
